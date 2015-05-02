@@ -160,6 +160,18 @@ impl TreeSink for RcDom {
         new_node(Comment(text))
     }
 
+    fn same_home_subtree(&self, _x: Handle, _y: Handle) -> bool {
+        true
+    }
+
+    fn associate_with_form(&mut self, _target: Handle, _form: Handle) {
+    }
+
+    fn has_parent_node(&self, node: Handle) -> bool {
+        let node = node.borrow();
+        node.parent.is_some()
+    }
+
     fn append(&mut self, parent: Handle, child: NodeOrText<Handle>) {
         // Append to an existing Text node if we have one.
         match child {
@@ -178,8 +190,9 @@ impl TreeSink for RcDom {
 
     fn append_before_sibling(&mut self,
             sibling: Handle,
-            child: NodeOrText<Handle>) -> Result<(), NodeOrText<Handle>> {
-        let (parent, i) = unwrap_or_return!(get_parent_and_index(&sibling), Err(child));
+            child: NodeOrText<Handle>) {
+        let (parent, i) = get_parent_and_index(&sibling)
+            .expect("append_before_sibling called on node without parent");
 
         let child = match (child, i) {
             // No previous node.
@@ -190,7 +203,7 @@ impl TreeSink for RcDom {
                 let parent = parent.borrow();
                 let prev = &parent.children[i-1];
                 if append_to_existing_text(prev, text.as_slice()) {
-                    return Ok(());
+                    return;
                 }
                 new_node(Text(text))
             }
@@ -208,7 +221,6 @@ impl TreeSink for RcDom {
 
         child.borrow_mut().parent = Some(parent.clone().downgrade());
         parent.borrow_mut().children.insert(i, child);
-        Ok(())
     }
 
     fn append_doctype_to_document(&mut self, name: String, public_id: String, system_id: String) {

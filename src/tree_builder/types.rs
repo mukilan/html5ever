@@ -77,3 +77,13 @@ pub enum FormatEntry<Handle> {
     Element(Handle, Tag),
     Marker,
 }
+
+pub enum InsertionPoint<Handle> {
+    /// Holds the parent
+    Append(Handle),
+    /// Holds the sibling before which the node will be inserted
+    /// TODO: Is the parent node needed? Is there a problem with using
+    /// the sibling to find if the form element is in the same home
+    /// subtree?
+    BeforeSibling(Handle)
+}
