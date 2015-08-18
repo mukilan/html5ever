@@ -78,12 +78,6 @@ impl TreeSink for Sink {
         id
     }
 
-    fn has_parent_node(&self, _node: usize) -> bool  {
-        // `node` will have a parent unless a script moved it, and we're
-        // not running scripts.  Therefore we can aways return true
-        true
-    }
-
     fn append(&mut self, parent: usize, child: NodeOrText<usize>) {
         match child {
             AppendNode(n)
@@ -95,13 +89,16 @@ impl TreeSink for Sink {
 
     fn append_before_sibling(&mut self,
             sibling: usize,
-            new_node: NodeOrText<usize>) {
+            new_node: NodeOrText<usize>) -> Result<(), NodeOrText<usize>> {
         match new_node {
             AppendNode(n)
                 => println!("Append node {} before {}", n, sibling),
             AppendText(t)
                 => println!("Append text before {}: \"{}\"", sibling, t.escape_default()),
         }
+        // `sibling` will have a parent unless a script moved it, and we're
+        // not running scripts.  Therefore we can always return `Ok(())`.
+        Ok(())
     }
 
     fn append_doctype_to_document(&mut self,

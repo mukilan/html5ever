@@ -208,8 +208,40 @@ impl<Handle, Sink> TreeBuilderActions<Handle>
 
     // Insert at the "appropriate place for inserting a node".
     fn insert_appropriately(&mut self, child: NodeOrText<Handle>, override_target: Option<Handle>) {
-        let insertion_point = self.appropriate_place_for_insertion(override_target);
-        self.insert_at(insertion_point, child);
+        declare_tag_set!(foster_target = table tbody tfoot thead tr);
+        let target = override_target.unwrap_or_else(|| self.current_node());
+        if !(self.foster_parenting && self.elem_in(target.clone(), foster_target)) {
+            // No foster parenting (the common case).
+            return self.sink.append(target, child);
+        }
+
+        // Foster parenting
+        // FIXME: <template>
+        let last_table = self.open_elems.iter()
+            .enumerate()
+            .rev()
+            .filter(|&(_, e)| self.html_elem_named(e.clone(), atom!(table)))
+            .next();
+
+        match last_table {
+            None => {
+                let html_elem = self.html_elem();
+                self.sink.append(html_elem, child);
+            }
+            Some((idx, last_table)) => {
+                // Try inserting "inside last table's parent node, immediately before last table"
+                match self.sink.append_before_sibling(last_table.clone(), child) {
+                    Ok(()) => (),
+
+                    // If last_table has no parent, we regain ownership of the child.
+                    // Insert "inside previous element, after its last child (if any)"
+                    Err(child) => {
+                        let previous_element = self.open_elems[idx-1].clone();
+                        self.sink.append(previous_element, child);
+                    }
+                }
+            }
+        }
     }
 
     fn adoption_agency(&mut self, subject: Atom) {
@@ -736,11 +768,7 @@ impl<Handle, Sink> TreeBuilderActions<Handle>
         let qname = QualName::new(ns, name);
         let elem = self.sink.create_element(qname.clone(), attrs.clone());
 
-        let insertion_point = self.appropriate_place_for_insertion(None);
-        let tree_node = match insertion_point {
-            LastChild(ref p) |
-            BeforeSibling(ref p) => p.clone()
-        };
+        self.insert_appropriately(AppendNode(elem.clone()), None);
 
         // Step 4.
         // TODO: Handle template element case
@@ -750,12 +778,10 @@ impl<Handle, Sink> TreeBuilderActions<Handle>
                && attrs.iter().any(|a| a.name == qualname!("","form"))) {
 
                let form = self.form_elem.as_ref().unwrap().clone();
-               if self.sink.same_home_subtree(tree_node, form.clone()) {
+               if self.sink.same_home_subtree(elem.clone(), form.clone()) {
                    self.sink.associate_with_form(elem.clone(), form)
                }
         }
-
-        self.insert_at(insertion_point, AppendNode(elem.clone()));
 
         match push {
             Push => self.push(&elem),

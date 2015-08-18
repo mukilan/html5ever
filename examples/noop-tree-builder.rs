@@ -65,15 +65,13 @@ impl TreeSink for Sink {
         self.get_id()
     }
 
-    fn has_parent_node(&self, _node: usize) -> bool {
-        // `node` will have a parent unless a script moved it, and we're
-        // not running scripts.  Therefore we can aways return true.
-        true
-    }
-
     fn append_before_sibling(&mut self,
             _sibling: usize,
-            _new_node: NodeOrText<usize>) { }
+            _new_node: NodeOrText<usize>) -> Result<(), NodeOrText<usize>> {
+        // `sibling` will have a parent unless a script moved it, and we're
+        // not running scripts.  Therefore we can always return `Ok(())`.
+        Ok(())
+    }
 
     fn parse_error(&mut self, _msg: Cow<'static, str>) { }
     fn set_quirks_mode(&mut self, _mode: QuirksMode) { }
